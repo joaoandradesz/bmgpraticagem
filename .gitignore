@@ -1,0 +1,8 @@
+# credenciais e documentos brutos nunca vão para o repositório
+config/credenciais.json
+entradas/**/*
+!entradas/README.md
+dados/
+__pycache__/
+.DS_Store
+~$*

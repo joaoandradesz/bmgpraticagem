@@ -1,0 +1,30 @@
+{
+  "empresa": "BMG Serviços de Praticagem",
+  "sigla": "BMG",
+  "cnpj": "44.783.225/0001-37",
+  "para": "Para Bruno, Tadzio e Tomás,",
+  "contas": {
+    "1922566704": {"nome": "Itaú", "detalhe": "Itaú · ag 8907 · c/c 98783-1"},
+    "1806390885": {"nome": "Inter", "detalhe": "Inter · ag 0001 · c/c 32069190-0"}
+  },
+  "saldos_documentados": [
+    {"conta": "1922566704", "data": "2026-10-14", "valor": 717838.09, "documento": "ExtratoBMG_8907_987831_14-10-2026.ofx"},
+    {"conta": "1806390885", "data": "2026-10-14", "valor": 1242731.86, "documento": "Extrato-17-07-2026-a-14-10-2026-OFX.ofx"}
+  ],
+  "meses_faturamento": ["2026-09", "2026-10"],
+  "fluxo_ate": "2026-11-10",
+  "saidas_fora_do_omie": [
+    {"data": "2026-10-20", "descricao": "DARF IRRF lucros/dividendos PA 09/26 (cód. 1841)", "categoria": "Tributos", "valor": 210000.00, "documento": "DARF IRRF LUCRO BMG 092026.pdf"},
+    {"data": "2026-10-20", "descricao": "DARF IRRF retenções serviços tomados PA 09/26 (cód. 1708)", "categoria": "Tributos", "valor": 67.22, "documento": "DARF RETENCAO SERVICO TOMADOS BMG 092026.pdf"}
+  ],
+  "estimativas": {
+    "2253672999": "IRPJ/CSLL 3º tri — valor copiado do trimestre anterior; aguardando guia da JFS",
+    "2192624180": "ISS nov — valor de referência; o real varia com o faturamento de outubro"
+  },
+  "categorias": {
+    "2.03.99": "Pró-labore", "2.04.10": "Contabilidade", "2.04.11": "Consultorias/BPO", "2.04.99": "Sistemas",
+    "2.03.10": "Plano de saúde", "2.04.98": "Conselho", "2.06.07": "ISS", "2.03.06": "INSS", "2.06.98": "INSS (DCTFWeb)",
+    "2.03.08": "IRRF / DARF", "2.08.99": "Distribuição de lucros", "2.05.04": "Tarifas bancárias"
+  },
+  "fora_do_fluxo": "distribuições de lucros (decisão dos sócios), títulos vencidos em cobrança e o IRPJ/CSLL do 4º trimestre"
+}

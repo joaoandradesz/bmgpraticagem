@@ -140,7 +140,7 @@ def montar(cfg, D, hoje, saldos_omie):
     for t in tit:
         if t["status"] != "RECEBIDO" and d0 < t["prev"] <= fim:
             tag = "a confirmar" if t["prev"] < hoje else ""
-            dias[t["prev"]]["ent"].append((f"{t['cliente']} · {t['navio']}" + (f" <span class=\"pill pill-ab\" style=\"font-size:8px\">{tag}</span>" if tag else ""),
+            dias[t["prev"]]["ent"].append((t["cliente"] + (f" · {t['navio']}" if t["navio"] != "—" else "") + (f" <span class=\"pill pill-ab\" style=\"font-size:8px\">{tag}</span>" if tag else ""),
                                            f"NFSe {t['nf']}", t["aberto"]))
     est = cfg.get("estimativas", {})
     catn = cfg.get("categorias", {})
@@ -161,6 +161,15 @@ def montar(cfg, D, hoje, saldos_omie):
         if dl > d0 and x["cabecalho"]["nCodCC"] in map(int, cfg["contas"]) and x["diversos"].get("cOrigem") not in ("BAXR", "BAXP", "TRAR", "TRAP"):
             k = "ent" if x["diversos"]["cNatureza"] == "R" else "sai"
             dias[dl][k].append((esc(x["detalhes"].get("cObs", ""))[:50] + " <span class=\"pill pill-av\" style=\"font-size:8px\">realizado s/ extrato</span>", "Omie", x["cabecalho"]["nValorLanc"]))
+
+    prox = (hoje.replace(day=28) + dt.timedelta(days=5)).replace(day=1)
+    cp_prox = []
+    for t in D["P"]:
+        c = t["cabecTitulo"]
+        v = d(c["dDtVenc"])
+        if c["cStatus"] not in ("PAGO", "LIQUIDADO", "CANCELADO") and (v.year, v.month) == (prox.year, prox.month):
+            cp_prox.append(dict(dia=v.day, forn=cli.get(c["nCodCliente"], "?"), v=c["nValorTitulo"], cat=catn.get(c.get("cCodCateg") or "", "Outros"),
+                                conta=cfg["contas"].get(str(c.get("nCodCC")), {}).get("nome", "—"), est=str(c["nCodTitulo"]) in est))
 
     fluxo, saldo = [], caixa0
     for dia in sorted(dias):
@@ -208,7 +217,7 @@ def montar(cfg, D, hoje, saldos_omie):
         if (dl.year, dl.month) in hm:
             hist[catn.get(cat, "Outros")][(dl.year, dl.month)] += x["cabecalho"]["nValorLanc"]
 
-    return dict(d0=d0, fim=fim, caixa0=caixa0, meses=meses, fluxo=fluxo, vencidos=vencidos, banco=banco_por_tit,
+    return dict(cp_prox=cp_prox, prox=prox, tit=tit, d0=d0, fim=fim, caixa0=caixa0, meses=meses, fluxo=fluxo, vencidos=vencidos, banco=banco_por_tit,
                 baixar=baixar, bol_arq=bol_arq, concil=concil, hist=hist, hm=hm, wp_meses=sorted({k for k in wp}))
 
 
@@ -397,6 +406,53 @@ def gerar(cfg, M, hoje, saida):
     return final
 
 
+def gerar_painel(cfg, M, hoje, saida):
+    st = {"rec": "Recebido", "av": "A Vencer", "ab": "Em Aberto"}
+    curto = lambda nf: int(nf[-4:]) if nf and nf[-4:].isdigit() else None
+    def t2d(t):
+        return dict(doc=t["rps"], nf=curto(t["nf"]), emi=t["emis"].isoformat(), venc=t["prev"].isoformat(), baixa=t["receb"].isoformat() if t["receb"] else None,
+                    cli=t["cliente"], navio=t["navio"], liq=t["liq"], saldo=t["aberto"] if t["sit"] != "rec" else 0, st=st[t["sit"]])
+    ids = set()
+    tit = []
+    for ym in cfg["meses_faturamento"]:
+        for t in M["meses"][ym]:
+            ids.add(t["id"]); tit.append(t2d(t))
+    tit += [t2d(t) for t in M["vencidos"] if t["id"] not in ids]  # vencidos de meses anteriores entram na cobrança
+    limpa = lambda h: re.sub(r"<[^>]+>", "", re.sub(r'<span class="pill[^"]*"[^>]*>[^<]*</span>', "", h)).strip()
+    tag = lambda h: " · ".join(re.findall(r'<span class="pill[^"]*"[^>]*>([^<]+)</span>', h))
+    dias = [dict(iso=f["dia"].isoformat(), lbl=dm(f["dia"]), dow=DIAS[f["dia"].weekday()].lower(), we=f["dia"].weekday() >= 5,
+                 ent=[dict(desc=limpa(a), sub=" · ".join(x for x in (b, tag(a)) if x), v=v) for a, b, v in f["itens"]["ent"]],
+                 sai=[dict(desc=limpa(a), sub=" · ".join(x for x in (b, tag(a)) if x), v=v) for a, b, v in f["itens"]["sai"]]) for f in M["fluxo"]]
+    agg = collections.OrderedDict()
+    for r in sorted(M["cp_prox"], key=lambda r: (r["dia"], r["forn"])):
+        k = (r["dia"], r["forn"], r["cat"])
+        a = agg.setdefault(k, dict(dia=r["dia"], forn=r["forn"], v=0, n=0, conta=r["conta"], obs=r["cat"], tag="wait" if r["est"] else ""))
+        a["v"] += r["v"]; a["n"] += 1
+    rec = [dict(dia=a["dia"], forn=a["forn"], val=br(a["v"]) + (f" ({a['n']}×)" if a["n"] > 1 else ""), obs=a["obs"] + (" · valor estimado" if a["tag"] else ""), conta=a["conta"], tag=a["tag"]) for a in agg.values()]
+    rec = sorted(rec + cfg.get("recorrentes_variaveis", []), key=lambda r: r["dia"])
+    contas = [dict(nome=cfg["contas"][s["conta"]]["nome"], cc=cfg["contas"][s["conta"]].get("cc", ""), obs=cfg["contas"][s["conta"]].get("obs", ""), v=s["valor"]) for s in cfg["saldos_documentados"]]
+    yms = cfg["meses_faturamento"]
+    meses = [[ym, MESES[int(ym[5:]) - 1][:3].upper(), MESES[int(ym[5:]) - 1].capitalize()] for ym in yms]
+    dados = dict(caixa=M["caixa0"], contas=contas, d0lbl=dm(M["d0"]), fimlbl=dm(M["fim"]), hoje=hoje.isoformat(), hojelbl=dm(hoje), hojeDia=hoje.day,
+                 meses=meses, tit=tit, days=dias, rec=rec,
+                 baixar=[dict(venc=b["venc"].isoformat(), pagador=b["pagador"], rps=b["rps"], nn=b["nn"], nf=t["nf"][-4:], receb=t["receb"].isoformat() if t["receb"] else None, valor=b["valor"]) for b, t in M["baixar"]],
+                 concil=[dict(conta=c["conta"], data=c["data"].isoformat(), banco=c["banco"], omie=c["omie"] or 0, pend=c["pend"]) for c in M["concil"]])
+    chips = '<button class="chip" data-f="m" data-v="" aria-pressed="true">' + " + ".join(m[1] for m in meses) + '</button>' + "".join(
+        f'<button class="chip" data-f="m" data-v="{m[0]}" aria-pressed="false">{m[1]}</button>' for m in meses)
+    docs = " e ".join(f'{cfg["contas"][s["conta"]]["nome"]} {dm(d(s["data"]))}' for s in cfg["saldos_documentados"])
+    rod = (f'<span><b>Fontes:</b> Omie (títulos, baixas e contas a pagar), Webpilot (navio), extratos {docs}, relatório de boletos do Itaú.</span>'
+           f'<span><b>No fluxo:</b> títulos a receber pela previsão, contas a pagar do Omie e guias cadastradas. <b>Fora:</b> {esc(cfg["fora_do_fluxo"])}.</span>'
+           '<span>Exact BR · Disciplina Gera Lucro</span>')
+    tpl = (RAIZ / "template" / "dashboard.html").read_text(encoding="utf-8")
+    rep = {"{{DADOS}}": json.dumps(dados, ensure_ascii=False), "{{TITULO}}": f"Painel {cfg['sigla']} · {cfg['empresa']}", "{{EMPRESA}}": esc(cfg["empresa"]),
+           "{{POSICAO}}": f"Posição {hoje:%d/%m/%Y} · extratos {M['d0']:%d/%m}", "{{JANELA}}": f"{dm(M['d0'] + dt.timedelta(days=1))} → {dm(M['fim'])}",
+           "{{FATHINT}}": f"Omie + Webpilot · {len(tit)} títulos · valor líquido · Em Aberto = vencido (inclui vencidos anteriores)",
+           "{{CHIPSMES}}": chips, "{{BOLARQ}}": esc(M["bol_arq"] or "sem relatório do banco"), "{{RODAPE}}": rod}
+    for k, v in rep.items():
+        tpl = tpl.replace(k, v)
+    saida.write_text(tpl, encoding="utf-8")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=str(RAIZ / "config" / "bmg.json"))
@@ -418,6 +474,10 @@ def main():
     saida = RAIZ / "relatorios" / hoje.strftime("%Y-%m") / f"posicao-{cfg['sigla'].lower()}-{'-'.join(MESES[int(y[5:])-1][:3] for y in yms)}-{yms[-1][:4]}.html"
     final = gerar(cfg, M, hoje, saida)
     (RAIZ / "index.html").write_text(saida.read_text(encoding="utf-8"), encoding="utf-8")  # última posição publicada na raiz (GitHub Pages)
+    painel = saida.with_name(saida.name.replace("posicao-", "painel-"))
+    gerar_painel(cfg, M, hoje, painel)
+    (RAIZ / "painel.html").write_text(painel.read_text(encoding="utf-8"), encoding="utf-8")
+    print(f"ok → {painel.relative_to(RAIZ)} e painel.html")
     print(f"ok → {saida.relative_to(RAIZ)} | caixa {br(M['caixa0'])} → {br(final)} em {M['fim']:%d/%m} | vencidos {len(M['vencidos'])} | boletos a baixar {len(M['baixar'])}")
 
 

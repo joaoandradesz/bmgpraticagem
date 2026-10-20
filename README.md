@@ -1,6 +1,9 @@
 # BMG Serviços de Praticagem · BPO Financeiro (Exact BR)
 
-Formato padrão de entrega mensal da BMG: um relatório HTML de posição (mesmo layout da ALS) gerado a partir do Omie, do Webpilot e dos documentos do banco.
+Formato padrão de entrega mensal da BMG, no mesmo layout da ALS, gerado a partir do Omie, do Webpilot e dos documentos do banco:
+
+- **`index.html`** — relatório de posição (leitura e PDF).
+- **`painel.html`** — painel interativo: caixa por conta, fluxo clicável dia a dia, faturamento filtrável, cobrança, conciliação e calendário de recorrentes.
 
 ## O que o relatório traz
 
@@ -17,6 +20,7 @@ Formato padrão de entrega mensal da BMG: um relatório HTML de posição (mesmo
    - `saldos_documentados` — saldo de cada conta **com o nome do extrato** que o sustenta. Sem documento, o saldo não entra.
    - `saidas_fora_do_omie` — guias (DARF, DCTFWeb) que ainda não estão cadastradas no Omie.
    - `estimativas` — títulos do Omie cujo valor é estimado (IRPJ/CSLL trimestral, ISS).
+   - `recorrentes_variaveis` — itens do calendário do painel que não têm título fixo no Omie (IRRF sobre lucros, IRPJ/CSLL, distribuição).
    - `meses_faturamento` e `fluxo_ate`.
 3. Rode:
 
@@ -24,7 +28,7 @@ Formato padrão de entrega mensal da BMG: um relatório HTML de posição (mesmo
 cd src && python3 gerar_posicao.py --hoje AAAA-MM-DD
 ```
 
-A saída vai para `relatorios/AAAA-MM/posicao-bmg-<meses>-<ano>.html` e a última posição é copiada para `index.html` na raiz (página do GitHub Pages). Com `--offline` ele reaproveita o último `dados/omie.json` sem chamar a API.
+A saída vai para `relatorios/AAAA-MM/posicao-bmg-<meses>-<ano>.html` e `relatorios/AAAA-MM/painel-bmg-<meses>-<ano>.html`; a última versão de cada um é copiada para `index.html` e `painel.html` na raiz (GitHub Pages). Com `--offline` ele reaproveita o último `dados/omie.json` sem chamar a API.
 
 ## Credenciais
 

@@ -456,7 +456,7 @@ def gerar_painel(cfg, M, hoje, saida):
     rep = {"{{DADOS}}": json.dumps(dados, ensure_ascii=False), "{{TITULO}}": f"Painel {cfg['sigla']} · {cfg['empresa']}", "{{EMPRESA}}": esc(cfg["empresa"]),
            "{{POSICAO}}": f"Posição {hoje:%d/%m/%Y} · extratos {M['d0']:%d/%m}", "{{JANELA}}": f"{dm(M['d0'] + dt.timedelta(days=1))} → {dm(M['fim'])}",
            "{{FATHINT}}": f"Omie + Webpilot · {len(tit)} títulos · valor líquido · Em Aberto = vencido (inclui vencidos anteriores)",
-           "{{CHIPSMES}}": chips, "{{BOLARQ}}": esc(M["bol_arq"] or "sem relatório do banco"), "{{RODAPE}}": rod}
+           "{{CHIPSMES}}": chips, "{{MESESLBL}}": " + ".join(m[1] for m in meses), "{{BOLARQ}}": esc(M["bol_arq"] or "sem relatório do banco"), "{{RODAPE}}": rod}
     for k, v in rep.items():
         tpl = tpl.replace(k, v)
     saida.write_text(tpl, encoding="utf-8")

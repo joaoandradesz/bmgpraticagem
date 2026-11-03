@@ -20,25 +20,31 @@
   "saldos_documentados": [
     {
       "conta": "1922566704",
-      "data": "2026-10-14",
-      "valor": 717838.09,
-      "documento": "ExtratoBMG_8907_987831_14-10-2026.ofx"
+      "data": "2026-11-03",
+      "valor": 55048.39,
+      "documento": "Entradas_Saidas_ag8907cc987831_03-11-26.pdf"
     },
     {
       "conta": "1806390885",
-      "data": "2026-10-14",
-      "valor": 1242731.86,
-      "documento": "Extrato-17-07-2026-a-14-10-2026-OFX.ofx"
+      "data": "2026-11-03",
+      "valor": 509872.07,
+      "documento": "Extrato-03-10-2026-a-03-11-2026-PDF (1).pdf"
     }
   ],
   "meses_faturamento": [
-    "2026-09",
-    "2026-10"
+    "2026-10",
+    "2026-11"
   ],
-  "fluxo_ate": "2026-11-10",
-  "saidas_fora_do_omie": [],
+  "fluxo_ate": "2026-11-30",
+  "saidas_fora_do_omie": [
+    {
+      "data": "2026-11-20",
+      "descricao": "DARF 1841 IRRF sobre distribuições de outubro (estimativa = guia de setembro)",
+      "categoria": "IRRF",
+      "valor": 210000
+    }
+  ],
   "estimativas": {
-    "2253672999": "IRPJ/CSLL 3º tri — valor copiado do trimestre anterior; aguardando guia da JFS",
     "2192624180": "ISS nov — valor de referência; o real varia com o faturamento de outubro"
   },
   "categorias": {

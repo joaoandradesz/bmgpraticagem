@@ -80,7 +80,7 @@ def saldo_omie(conta, ate):
 
 
 def ler_webpilot():
-    """NFS-e → {cliente, navio, pedido}. Usa todas as exportações em entradas/webpilot/."""
+    """NFS-e → {cliente, navio, pedido, rps, emis, venc, liq}. Usa todas as exportações em entradas/webpilot/ (a mais nova prevalece)."""
     m = {}
     for arq in sorted(glob.glob(str(RAIZ / "entradas" / "webpilot" / "*.xlsx"))):
         ws = openpyxl.load_workbook(arq, data_only=True).active
@@ -89,7 +89,8 @@ def ler_webpilot():
         col = {c: i for i, c in enumerate(rows[h])}
         for r in rows[h + 1:]:
             if r and r[col["NFSe"]]:
-                m[str(r[col["NFSe"]])] = {"cliente": r[col["Cliente"]], "navio": r[col["Navio"]], "pedido": r[col["Pedido(s)"]]}
+                m[str(r[col["NFSe"]])] = {"cliente": r[col["Cliente"]], "navio": r[col["Navio"]], "pedido": r[col["Pedido(s)"]], "rps": str(r[col["Número"]]),
+                                          "emis": r[col["Dt Emissão"]].date(), "venc": r[col["Dt Vencimento"]].date(), "liq": float(r[col["Vl.Liquido"]])}
     return m
 
 
@@ -128,6 +129,13 @@ def montar(cfg, D, hoje, saldos_omie):
                  cnpj=dig(c.get("cCPFCNPJCliente")), receb=max((d(l["dDtLanc"]) for l in baixas), default=None))
         x["sit"] = "rec" if x["status"] == "RECEBIDO" else ("ab" if x["prev"] <= d0 else "av")
         tit.append(x)
+    # NFS-e já emitidas no Webpilot que ainda não foram importadas no Omie: entram pelo vencimento do Webpilot.
+    # ponytail: a situação do Webpilot é ignorada (lá nada é baixado); se a nota já tiver crédito no extrato, só aparece depois de importada.
+    no_omie = {t["nf"] for t in tit}
+    for nf, w in wp.items():
+        if nf not in no_omie and w["emis"] > d0 - dt.timedelta(days=90):
+            tit.append(dict(id=f"wp{nf}", nf=nf, rps=w["rps"], emis=w["emis"], venc=w["venc"], prev=w["venc"], status="WEBPILOT", liq=w["liq"], aberto=w["liq"],
+                            cliente=w["cliente"], navio=w["navio"] or "—", cnpj="", receb=None, sit="ab" if w["venc"] <= d0 else "av", wp=True))
 
     meses = {}
     for ym in cfg["meses_faturamento"]:
@@ -139,7 +147,7 @@ def montar(cfg, D, hoje, saldos_omie):
     dias = collections.defaultdict(lambda: {"ent": [], "sai": []})
     for t in tit:
         if t["status"] != "RECEBIDO" and d0 < t["prev"] <= fim:
-            tag = "a confirmar" if t["prev"] < hoje else ""
+            tag = "fora do Omie" if t.get("wp") else ("a confirmar" if t["prev"] < hoje else "")
             dias[t["prev"]]["ent"].append((t["cliente"] + (f" · {t['navio']}" if t["navio"] != "—" else "") + (f" <span class=\"pill pill-ab\" style=\"font-size:8px\">{tag}</span>" if tag else ""),
                                            f"NFSe {t['nf']}", t["aberto"]))
     est = cfg.get("estimativas", {})
@@ -242,8 +250,9 @@ def cards(itens):
 
 def tabela_faturamento(lst):
     pill = {"rec": ("st-rec", "pill-rec", "Recebido"), "av": ("st-av", "pill-av", "A Vencer"), "ab": ("st-ab", "pill-ab", "Em Aberto")}
+    fora = ' <span class="pill pill-ab" style="font-size:8px">fora do Omie</span>'
     linhas = "".join(
-        f'<tr class="{pill[t["sit"]][0]}"><td>{dm(t["emis"])}</td><td>{esc(t["cliente"])}</td><td>{esc(t["navio"])}</td><td>{t["nf"][-4:]}</td>'
+        f'<tr class="{pill[t["sit"]][0]}"><td>{dm(t["emis"])}</td><td>{esc(t["cliente"])}{fora if t.get("wp") else ""}</td><td>{esc(t["navio"])}</td><td>{t["nf"][-4:]}</td>'
         f'<td>{dm(t["prev"])}</td><td>{dm(t["receb"])}</td><td class="num">{br(t["liq"])}</td><td><span class="pill {pill[t["sit"]][1]}">{pill[t["sit"]][2]}</span></td></tr>'
         for t in lst)
     return ('<table class="diag-table"><thead><tr><th>Emi</th><th>Cliente</th><th>Navio / Manobra</th><th>NFSe</th><th>Venc</th><th>Receb</th>'
@@ -411,7 +420,7 @@ def gerar_painel(cfg, M, hoje, saida):
     curto = lambda nf: int(nf[-4:]) if nf and nf[-4:].isdigit() else None
     def t2d(t):
         return dict(doc=t["rps"], nf=curto(t["nf"]), emi=t["emis"].isoformat(), venc=t["prev"].isoformat(), baixa=t["receb"].isoformat() if t["receb"] else None,
-                    cli=t["cliente"], navio=t["navio"], liq=t["liq"], saldo=t["aberto"] if t["sit"] != "rec" else 0, st=st[t["sit"]])
+                    cli=t["cliente"], navio=t["navio"] + (" · fora do Omie" if t.get("wp") else ""), liq=t["liq"], saldo=t["aberto"] if t["sit"] != "rec" else 0, st=st[t["sit"]])
     ids = set()
     tit = []
     for ym in cfg["meses_faturamento"]:

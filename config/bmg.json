@@ -20,15 +20,15 @@
   "saldos_documentados": [
     {
       "conta": "1922566704",
-      "data": "2026-11-03",
-      "valor": 55048.39,
-      "documento": "Entradas_Saidas_ag8907cc987831_03-11-26.pdf"
+      "data": "2026-11-10",
+      "valor": 435523.42,
+      "documento": "Entradas_Saidas_ag8907cc987831_10-11-26.pdf"
     },
     {
       "conta": "1806390885",
-      "data": "2026-11-03",
-      "valor": 509872.07,
-      "documento": "Extrato-03-10-2026-a-03-11-2026-PDF (1).pdf"
+      "data": "2026-11-10",
+      "valor": 951213.52,
+      "documento": "Extrato-10-10-2026-a-10-11-2026-PDF.pdf"
     }
   ],
   "meses_faturamento": [
@@ -44,9 +44,7 @@
       "valor": 210000
     }
   ],
-  "estimativas": {
-    "2192624180": "ISS nov — valor de referência; o real varia com o faturamento de outubro"
-  },
+  "estimativas": {},
   "categorias": {
     "2.03.99": "Pró-labore",
     "2.04.10": "Contabilidade",

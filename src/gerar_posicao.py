@@ -127,7 +127,8 @@ def montar(cfg, D, hoje, saldos_omie):
                  prev=d(c.get("dDtPrevisao") or c["dDtVenc"]), status=c["cStatus"], liq=round(r["nValPago"] if c["cStatus"] == "RECEBIDO" else r["nValLiquido"] + r["nValAberto"], 2),
                  aberto=r["nValAberto"], cliente=w.get("cliente") or cli.get(c["nCodCliente"], "?"), navio=w.get("navio") or "—",
                  cnpj=dig(c.get("cCPFCNPJCliente")), receb=max((d(l["dDtLanc"]) for l in baixas), default=None))
-        x["sit"] = "rec" if x["status"] == "RECEBIDO" else ("ab" if x["prev"] <= d0 else "av")
+        # crédito de boleto é D+1: o que vence no dia do extrato ainda não pode ter caído nele
+        x["sit"] = "rec" if x["status"] == "RECEBIDO" else ("ab" if x["prev"] < d0 else "av")
         tit.append(x)
     # NFS-e já emitidas no Webpilot que ainda não foram importadas no Omie: entram pelo vencimento do Webpilot.
     # ponytail: a situação do Webpilot é ignorada (lá nada é baixado); se a nota já tiver crédito no extrato, só aparece depois de importada.
@@ -135,7 +136,7 @@ def montar(cfg, D, hoje, saldos_omie):
     for nf, w in wp.items():
         if nf not in no_omie and w["emis"] > d0 - dt.timedelta(days=90):
             tit.append(dict(id=f"wp{nf}", nf=nf, rps=w["rps"], emis=w["emis"], venc=w["venc"], prev=w["venc"], status="WEBPILOT", liq=w["liq"], aberto=w["liq"],
-                            cliente=w["cliente"], navio=w["navio"] or "—", cnpj="", receb=None, sit="ab" if w["venc"] <= d0 else "av", wp=True))
+                            cliente=w["cliente"], navio=w["navio"] or "—", cnpj="", receb=None, sit="ab" if w["venc"] < d0 else "av", wp=True))
 
     meses = {}
     for ym in cfg["meses_faturamento"]:
@@ -146,9 +147,9 @@ def montar(cfg, D, hoje, saldos_omie):
     # ---- fluxo
     dias = collections.defaultdict(lambda: {"ent": [], "sai": []})
     for t in tit:
-        if t["status"] != "RECEBIDO" and d0 < t["prev"] <= fim:
+        if t["status"] != "RECEBIDO" and d0 <= t["prev"] <= fim:
             tag = "fora do Omie" if t.get("wp") else ("a confirmar" if t["prev"] < hoje else "")
-            dias[t["prev"]]["ent"].append((t["cliente"] + (f" · {t['navio']}" if t["navio"] != "—" else "") + (f" <span class=\"pill pill-ab\" style=\"font-size:8px\">{tag}</span>" if tag else ""),
+            dias[max(t["prev"], d0 + dt.timedelta(days=1))]["ent"].append((t["cliente"] + (f" · {t['navio']}" if t["navio"] != "—" else "") + (f" <span class=\"pill pill-ab\" style=\"font-size:8px\">{tag}</span>" if tag else ""),
                                            f"NFSe {t['nf']}", t["aberto"]))
     est = cfg.get("estimativas", {})
     catn = cfg.get("categorias", {})
